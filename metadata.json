@@ -1,0 +1,5 @@
+{
+  "name": "LinkGenie AI",
+  "description": "An AI-powered URL shortener that uses Gemini to generate smart aliases and provide content summaries for your long links.",
+  "requestFramePermissions": []
+}

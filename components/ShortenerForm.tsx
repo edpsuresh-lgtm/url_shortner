@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Sparkles, Link, ArrowRight, Loader2, Check } from 'lucide-react';
+import { Sparkles, Link, ArrowRight, Loader2, Check, Calendar, Lock, ChevronDown, ChevronUp } from 'lucide-react';
 import { getSmartAliases, getUrlMetadata } from '../services/geminiService';
 import { AliasSuggestion, ShortenedUrl } from '../types';
 
@@ -14,6 +14,9 @@ const ShortenerForm: React.FC<ShortenerFormProps> = ({ onUrlCreated }) => {
   const [suggestions, setSuggestions] = useState<AliasSuggestion[]>([]);
   const [customAlias, setCustomAlias] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [expiresAt, setExpiresAt] = useState('');
+  const [password, setPassword] = useState('');
 
   const handleSuggest = async () => {
     if (!url) return;
@@ -38,12 +41,17 @@ const ShortenerForm: React.FC<ShortenerFormProps> = ({ onUrlCreated }) => {
       clicks: 0,
       title: metadata.title,
       description: metadata.description,
+      expiresAt: expiresAt || undefined,
+      password: password || undefined,
     };
 
     onUrlCreated(newUrl);
     setUrl('');
     setCustomAlias('');
     setSuggestions([]);
+    setExpiresAt('');
+    setPassword('');
+    setShowAdvanced(false);
     setLoading(false);
     setIsSuccess(true);
     setTimeout(() => setIsSuccess(false), 3000);
@@ -106,6 +114,49 @@ const ShortenerForm: React.FC<ShortenerFormProps> = ({ onUrlCreated }) => {
         <div className="mt-2 flex items-center text-sm text-gray-400 italic">
           <Sparkles className="h-4 w-4 mr-1 text-indigo-400" />
           AI helps you pick memorable names and analyzes link content
+        </div>
+
+        {/* Advanced Options */}
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            Advanced Options
+          </button>
+
+          {showAdvanced && (
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                  <Calendar className="h-4 w-4" />
+                  Expiration Date (Optional)
+                </label>
+                <input
+                  type="date"
+                  value={expiresAt}
+                  onChange={(e) => setExpiresAt(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                  <Lock className="h-4 w-4" />
+                  Password Protection (Optional)
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Set password to protect link"
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

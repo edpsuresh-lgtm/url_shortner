@@ -8,6 +8,7 @@ import SignInModal from './components/SignInModal';
 import SignUpModal from './components/SignUpModal';
 import UserProfile from './components/UserProfile';
 import SettingsModal from './components/SettingsModal';
+import AuthPrompt from './components/AuthPrompt';
 import FeaturesSection from './components/FeaturesSection';
 import EnterpriseSection from './components/EnterpriseSection';
 import DeveloperAPISection from './components/DeveloperAPISection';
@@ -28,33 +29,41 @@ const App: React.FC = () => {
 
   // Load from local storage
   useEffect(() => {
-    const saved = localStorage.getItem('linkgenie_urls');
-    if (saved) {
-      try {
-        setUrls(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to load saved URLs");
-      }
-    }
-
-    // Load user from localStorage
+    // Load user from localStorage first
     const savedUser = localStorage.getItem('linkgenie_user');
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        const userData = JSON.parse(savedUser);
+        setUser(userData);
+        
+        // Load URLs only for the current user
+        const saved = localStorage.getItem(`linkgenie_urls_${userData.email}`);
+        if (saved) {
+          try {
+            setUrls(JSON.parse(saved));
+          } catch (e) {
+            console.error("Failed to load saved URLs");
+          }
+        }
       } catch (e) {
         console.error("Failed to load saved user");
       }
     }
   }, []);
 
-  // Save to local storage
+  // Save to local storage (user-specific)
   useEffect(() => {
-    localStorage.setItem('linkgenie_urls', JSON.stringify(urls));
-  }, [urls]);
+    if (user) {
+      localStorage.setItem(`linkgenie_urls_${user.email}`, JSON.stringify(urls));
+    }
+  }, [urls, user]);
 
   const handleUrlCreated = (newUrl: ShortenedUrl) => {
     setUrls(prev => [newUrl, ...prev]);
+  };
+
+  const handleUpdate = (updatedLink: ShortenedUrl) => {
+    setUrls(prev => prev.map(url => url.id === updatedLink.id ? updatedLink : url));
   };
 
   const handleDelete = (id: string) => {
@@ -80,17 +89,46 @@ const App: React.FC = () => {
     const userData: User = { email };
     setUser(userData);
     localStorage.setItem('linkgenie_user', JSON.stringify(userData));
+    
+    // Load user-specific URLs
+    const saved = localStorage.getItem(`linkgenie_urls_${email}`);
+    if (saved) {
+      try {
+        setUrls(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to load saved URLs");
+      }
+    } else {
+      setUrls([]); // Reset URLs for new user
+    }
   };
 
   const handleSignUp = (email: string, name: string) => {
     const userData: User = { email, name };
     setUser(userData);
     localStorage.setItem('linkgenie_user', JSON.stringify(userData));
+    setUrls([]); // Start with empty URLs for new user
   };
 
   const handleSignOut = () => {
+    // Save email before clearing user
+    const userEmail = user?.email;
+    
+    // Clear all user data
     setUser(null);
+    setUrls([]);
+    setCopiedId(null);
+    
+    // Remove user data from localStorage
     localStorage.removeItem('linkgenie_user');
+    
+    // Clear user-specific URLs from localStorage
+    if (userEmail) {
+      localStorage.removeItem(`linkgenie_urls_${userEmail}`);
+    }
+    
+    // Clear any old global URLs storage
+    localStorage.removeItem('linkgenie_urls');
   };
 
   const handleUpdateUser = (name: string) => {
@@ -203,17 +241,25 @@ const App: React.FC = () => {
         </div>
 
         {/* Core Functionality */}
-        <ShortenerForm onUrlCreated={handleUrlCreated} />
-        
-        <StatsDashboard urls={urls} />
-        
-        <UrlList 
-          urls={urls} 
-          onDelete={handleDelete} 
-          onCopy={handleCopy}
-          onLinkClick={handleLinkClick}
-          copiedId={copiedId}
-        />
+        {user ? (
+          <>
+            <ShortenerForm onUrlCreated={handleUrlCreated} />
+            <StatsDashboard urls={urls} />
+            <UrlList 
+              urls={urls} 
+              onDelete={handleDelete} 
+              onCopy={handleCopy}
+              onLinkClick={handleLinkClick}
+              onUpdate={handleUpdate}
+              copiedId={copiedId}
+            />
+          </>
+        ) : (
+          <AuthPrompt 
+            onSignIn={() => setShowSignIn(true)}
+            onSignUp={() => setShowSignUp(true)}
+          />
+        )}
       </main>
 
       {/* Footer */}

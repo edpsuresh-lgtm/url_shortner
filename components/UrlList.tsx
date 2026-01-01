@@ -1,17 +1,28 @@
 
-import React from 'react';
-import { ExternalLink, Copy, Trash2, Calendar, MousePointer2, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { ExternalLink, Copy, Trash2, Calendar, MousePointer2, Check, QrCode, Edit, Lock as LockIcon, Clock } from 'lucide-react';
 import { ShortenedUrl } from '../types';
+import QRCodeModal from './QRCodeModal';
+import EditLinkModal from './EditLinkModal';
 
 interface UrlListProps {
   urls: ShortenedUrl[];
   onDelete: (id: string) => void;
   onCopy: (code: string) => void;
   onLinkClick?: (id: string) => void;
+  onUpdate?: (updatedLink: ShortenedUrl) => void;
   copiedId: string | null;
 }
 
-const UrlList: React.FC<UrlListProps> = ({ urls, onDelete, onCopy, onLinkClick, copiedId }) => {
+const UrlList: React.FC<UrlListProps> = ({ urls, onDelete, onCopy, onLinkClick, onUpdate, copiedId }) => {
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [selectedLink, setSelectedLink] = useState<ShortenedUrl | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+
+  const isExpired = (expiresAt?: string) => {
+    if (!expiresAt) return false;
+    return new Date(expiresAt) < new Date();
+  };
   if (urls.length === 0) {
     return (
       <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
@@ -53,6 +64,25 @@ const UrlList: React.FC<UrlListProps> = ({ urls, onDelete, onCopy, onLinkClick, 
               {url.description && (
                 <p className="text-xs text-gray-400 mt-2 line-clamp-1 italic">"{url.description}"</p>
               )}
+              
+              <div className="flex items-center gap-3 mt-2 flex-wrap">
+                {url.password && (
+                  <span className="inline-flex items-center gap-1 text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">
+                    <LockIcon className="h-3 w-3" />
+                    Protected
+                  </span>
+                )}
+                {url.expiresAt && (
+                  <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                    isExpired(url.expiresAt) 
+                      ? 'bg-red-100 text-red-700' 
+                      : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    <Clock className="h-3 w-3" />
+                    {isExpired(url.expiresAt) ? 'Expired' : `Expires ${new Date(url.expiresAt).toLocaleDateString()}`}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-6 text-sm text-gray-400 border-t md:border-t-0 pt-3 md:pt-0">
@@ -66,17 +96,41 @@ const UrlList: React.FC<UrlListProps> = ({ urls, onDelete, onCopy, onLinkClick, 
                 <span>{new Date(url.createdAt).toLocaleDateString()}</span>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedLink(url);
+                    setQrModalOpen(true);
+                  }}
+                  className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                  title="QR Code"
+                >
+                  <QrCode className="h-5 w-5" />
+                </button>
+                {onUpdate && (
+                  <button
+                    onClick={() => {
+                      setSelectedLink(url);
+                      setEditModalOpen(true);
+                    }}
+                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    title="Edit"
+                  >
+                    <Edit className="h-5 w-5" />
+                  </button>
+                )}
                 <a
                   href={url.originalUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                  title="Open"
                 >
                   <ExternalLink className="h-5 w-5" />
                 </a>
                 <button
                   onClick={() => onDelete(url.id)}
                   className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Delete"
                 >
                   <Trash2 className="h-5 w-5" />
                 </button>
@@ -85,6 +139,36 @@ const UrlList: React.FC<UrlListProps> = ({ urls, onDelete, onCopy, onLinkClick, 
           </div>
         </div>
       ))}
+      
+      {/* QR Code Modal */}
+      {selectedLink && (
+        <QRCodeModal
+          isOpen={qrModalOpen}
+          onClose={() => {
+            setQrModalOpen(false);
+            setSelectedLink(null);
+          }}
+          shortUrl={`https://linkgenie.ai/${selectedLink.shortCode}`}
+          title={selectedLink.title}
+        />
+      )}
+      
+      {/* Edit Link Modal */}
+      {selectedLink && onUpdate && (
+        <EditLinkModal
+          isOpen={editModalOpen}
+          onClose={() => {
+            setEditModalOpen(false);
+            setSelectedLink(null);
+          }}
+          link={selectedLink}
+          onSave={(updatedLink) => {
+            onUpdate(updatedLink);
+            setEditModalOpen(false);
+            setSelectedLink(null);
+          }}
+        />
+      )}
     </div>
   );
 };

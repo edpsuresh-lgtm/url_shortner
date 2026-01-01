@@ -8,6 +8,9 @@ export interface ShortenedUrl {
   title?: string;
   description?: string;
   tags?: string[];
+  expiresAt?: string; // Link expiration date
+  password?: string; // Password protection (hashed)
+  qrCode?: string; // QR code data URL
 }
 
 export interface AliasSuggestion {
